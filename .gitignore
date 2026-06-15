@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# test & coverage
+coverage/
+.nyc_output/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# data
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
