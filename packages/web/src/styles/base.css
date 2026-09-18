@@ -1,0 +1,158 @@
+/*
+ * Design tokens and element defaults.
+ *
+ * Every colour is a variable so the dark theme is a single override block
+ * rather than a parallel stylesheet. `data-theme` on <html> wins over the media
+ * query, which lets the toggle force a theme while `system` falls back to the OS.
+ */
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-sunken: #f1f3f6;
+  --border: #e3e6eb;
+  --border-strong: #cfd4dc;
+
+  --text: #16191f;
+  --text-muted: #5b626e;
+  --text-faint: #8b929e;
+
+  --accent: #3b5bdb;
+  --accent-soft: rgba(59, 91, 219, 0.12);
+  --accent-text: #ffffff;
+
+  --good: #0f7b4f;
+  --bad: #c0392b;
+  --warn: #b26a00;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e1116;
+    --surface: #161a21;
+    --surface-sunken: #1d222b;
+    --border: #262c36;
+    --border-strong: #353d4a;
+
+    --text: #e8eaee;
+    --text-muted: #a3abb8;
+    --text-faint: #717a88;
+
+    --accent: #7d9bff;
+    --accent-soft: rgba(125, 155, 255, 0.16);
+    --accent-text: #0e1116;
+
+    --good: #3dd68c;
+    --bad: #ff6b6b;
+    --warn: #ffc078;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0e1116;
+  --surface: #161a21;
+  --surface-sunken: #1d222b;
+  --border: #262c36;
+  --border-strong: #353d4a;
+
+  --text: #e8eaee;
+  --text-muted: #a3abb8;
+  --text-faint: #717a88;
+
+  --accent: #7d9bff;
+  --accent-soft: rgba(125, 155, 255, 0.16);
+  --accent-text: #0e1116;
+
+  --good: #3dd68c;
+  --bad: #ff6b6b;
+  --warn: #ffc078;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+pre,
+.table__mono {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+/* A visible focus ring everywhere, since the dashboard is keyboard-navigable. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
