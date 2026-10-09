@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for the dev toolchain rather than five; these move together and
+      # a broken combination is easier to revert as a unit.
+      dev-tooling:
+        patterns:
+          - '@typescript-eslint/*'
+          - 'eslint*'
+          - 'prettier'
+          - 'typescript'
+          - 'vitest'
+          - '@vitest/*'
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
