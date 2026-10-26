@@ -9,6 +9,7 @@ import { LineChart } from '../components/LineChart';
 import { RangePicker } from '../components/RangePicker';
 import { StatCard } from '../components/StatCard';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { useShortcuts } from '../hooks/useShortcuts';
 
 type SeriesMetric = 'visitors' | 'events' | 'sessions';
 
@@ -17,17 +18,31 @@ export function Overview(): JSX.Element {
   const { slug = '' } = useParams();
   const { preset, range, granularity, setPreset } = useDateRange();
   const [metric, setMetric] = useState<SeriesMetric>('visitors');
+  const [includeBots, setIncludeBots] = useState(false);
 
-  const stats = useAsync(() => api.analytics.overview(slug, range), [slug, range.from, range.to]);
+  const stats = useAsync(
+    () => api.analytics.overview(slug, range, includeBots),
+    [slug, range.from, range.to, includeBots],
+  );
   const series = useAsync(
-    () => api.analytics.series(slug, range, metric, granularity),
-    [slug, range.from, range.to, metric, granularity],
+    () => api.analytics.series(slug, range, metric, granularity, includeBots),
+    [slug, range.from, range.to, metric, granularity, includeBots],
   );
   const live = useAsync(() => api.analytics.live(slug), [slug]);
 
   // Refresh the online count without touching the heavier aggregate queries.
   const reloadLive = useCallback(() => live.reload(), [live]);
   usePolling(reloadLive, 30_000);
+
+  // Number keys jump between presets; 'b' toggles crawler traffic.
+  useShortcuts({
+    '1': () => setPreset('24h'),
+    '2': () => setPreset('7d'),
+    '3': () => setPreset('30d'),
+    '4': () => setPreset('90d'),
+    '5': () => setPreset('12m'),
+    b: () => setIncludeBots((on) => !on),
+  });
 
   if (stats.error) return <ErrorNotice error={stats.error} onRetry={stats.reload} />;
 
@@ -42,7 +57,13 @@ export function Overview(): JSX.Element {
             {new Date(range.from).toLocaleDateString()} – {new Date(range.to).toLocaleDateString()}
           </p>
         </div>
-        <RangePicker value={preset} onChange={setPreset} liveVisitors={live.data?.visitors} />
+        <RangePicker
+          value={preset}
+          onChange={setPreset}
+          liveVisitors={live.data?.visitors}
+          includeBots={includeBots}
+          onIncludeBotsChange={setIncludeBots}
+        />
       </header>
 
       <section className="stats-grid">
