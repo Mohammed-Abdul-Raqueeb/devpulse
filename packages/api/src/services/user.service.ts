@@ -79,3 +79,43 @@ export function stripSecret(user: UserWithSecret | User): User {
   const { id, email, name, role, createdAt } = user;
   return { id, email, name, role, createdAt };
 }
+
+/**
+ * Changes a user's role.
+ *
+ * The last owner cannot be demoted. Without that guard an install can end up
+ * with nobody able to delete a project or promote anyone, and the only recovery
+ * is editing the database by hand.
+ */
+export function updateRole(userId: string, role: Role): User {
+  const db = getDb();
+  const target = findById(userId);
+  if (!target) throw notFound('User');
+
+  if (target.role === 'owner' && role !== 'owner') {
+    const { count } = db
+      .prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'owner'")
+      .get() as {
+      count: number;
+    };
+    if (count <= 1) throw conflict('An install must keep at least one owner');
+  }
+
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+  return { ...target, role };
+}
+
+/** Deletes a user. Their projects cascade with them, so callers should warn first. */
+export function deleteUser(userId: string): void {
+  const target = findById(userId);
+  if (!target) throw notFound('User');
+
+  if (target.role === 'owner') {
+    const { count } = getDb()
+      .prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'owner'")
+      .get() as { count: number };
+    if (count <= 1) throw conflict('An install must keep at least one owner');
+  }
+
+  getDb().prepare('DELETE FROM users WHERE id = ?').run(userId);
+}
