@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { validateQuery } from '../middleware/validate.js';
 import { listEvents } from '../services/event.service.js';
-import { streamEventsCsv } from '../services/export.service.js';
+import { streamEventsCsv, streamEventsNdjson } from '../services/export.service.js';
 import { requireProject } from '../services/project.service.js';
 
 export const eventRoutes = Router();
@@ -69,6 +69,31 @@ eventRoutes.get(
     res.setHeader('Content-Disposition', `attachment; filename="${project.slug}-events.csv"`);
 
     streamEventsCsv(res, {
+      projectId: project.id,
+      from: new Date(from).toISOString(),
+      to: new Date(to).toISOString(),
+    });
+  }),
+);
+
+/**
+ * GET /projects/:project/events/export.ndjson
+ *
+ * The same export as the CSV route, in newline-delimited JSON. Preferred when
+ * the destination is a pipeline rather than a spreadsheet: properties stay a
+ * real object instead of a quoted JSON string in a cell.
+ */
+eventRoutes.get(
+  '/:project/events/export.ndjson',
+  validateQuery(exportQuerySchema),
+  asyncHandler(async (req, res) => {
+    const project = requireProject(req.params.project!);
+    const { from, to } = req.query as unknown as z.infer<typeof exportQuerySchema>;
+
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${project.slug}-events.ndjson"`);
+
+    streamEventsNdjson(res, {
       projectId: project.id,
       from: new Date(from).toISOString(),
       to: new Date(to).toISOString(),

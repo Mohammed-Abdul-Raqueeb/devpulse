@@ -1,7 +1,7 @@
 import type { Writable } from 'node:stream';
 import type { TimeRange } from '@devpulse/shared';
 import { getDb } from '../db/client.js';
-import type { EventRow } from '../db/rows.js';
+import { toEvent, type EventRow } from '../db/rows.js';
 
 export interface ExportOptions extends TimeRange {
   projectId: string;
@@ -92,4 +92,45 @@ export function toCsv(rows: Array<Record<string, unknown>>, columns: string[]): 
   const header = columns.join(',');
   const body = rows.map((row) => columns.map((c) => csvCell(row[c])).join(',')).join('\n');
   return rows.length === 0 ? `${header}\n` : `${header}\n${body}\n`;
+}
+
+/**
+ * Writes events as newline-delimited JSON.
+ *
+ * NDJSON rather than a JSON array: an array would need the closing bracket
+ * written after the last row, so a connection that drops mid-export leaves a
+ * file that no parser will touch. Every complete line of NDJSON is usable even
+ * if the stream is cut.
+ */
+export function streamEventsNdjson(out: Writable, options: ExportOptions): void {
+  const statement = getDb().prepare(
+    `SELECT * FROM events
+     WHERE project_id = ? AND timestamp >= ? AND timestamp < ?
+     ORDER BY timestamp ASC`,
+  );
+
+  const iterator = statement.iterate(
+    options.projectId,
+    options.from,
+    options.to,
+  ) as IterableIterator<EventRow>;
+
+  // Driven by hand for the same reason as the CSV writer: breaking out of a
+  // for...of would finalise the statement and truncate the export.
+  const pump = (): void => {
+    for (;;) {
+      const step = iterator.next();
+      if (step.done === true) break;
+
+      if (!out.write(`${JSON.stringify(toEvent(step.value))}\n`)) {
+        out.once('drain', pump);
+        return;
+      }
+    }
+    out.end();
+  };
+
+  out.on('close', () => iterator.return?.(undefined));
+
+  pump();
 }
