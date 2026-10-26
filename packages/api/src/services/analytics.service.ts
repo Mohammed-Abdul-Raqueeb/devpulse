@@ -14,9 +14,14 @@ import {
 } from '@devpulse/shared';
 import { getDb } from '../db/client.js';
 import { badRequest } from '../lib/errors.js';
-import { bucketExpression, buildWhere, resolveDimension } from './query.builder.js';
+import {
+  bucketExpression,
+  buildWhere,
+  resolveDimension,
+  type WhereOptions,
+} from './query.builder.js';
 
-export interface MetricOptions extends TimeRange {
+export interface MetricOptions extends TimeRange, WhereOptions {
   projectId: string;
   metric: Metric;
   granularity: Granularity;
@@ -51,7 +56,9 @@ export function metricSeries(options: MetricOptions): MetricSeries {
 
 function countSeries(options: MetricOptions): SeriesPoint[] {
   const aggregate = METRIC_AGGREGATES[options.metric];
-  const where = buildWhere(options.projectId, options.from, options.to, options.filters);
+  const where = buildWhere(options.projectId, options.from, options.to, options.filters, {
+    includeBots: options.includeBots,
+  });
   const bucket = bucketExpression(options.granularity);
 
   const rows = getDb()
@@ -80,7 +87,9 @@ function padBuckets(
 
 /** Bounce rate and average session length aggregate over sessions, not raw events. */
 function sessionMetricSeries(options: MetricOptions): MetricSeries {
-  const where = buildWhere(options.projectId, options.from, options.to, options.filters);
+  const where = buildWhere(options.projectId, options.from, options.to, options.filters, {
+    includeBots: options.includeBots,
+  });
   const bucket = bucketExpression(options.granularity, 'MIN(timestamp)');
 
   const rows = getDb()
@@ -118,7 +127,9 @@ function sessionMetricSeries(options: MetricOptions): MetricSeries {
 }
 
 function sessionMetricTotal(options: MetricOptions): number {
-  const where = buildWhere(options.projectId, options.from, options.to, options.filters);
+  const where = buildWhere(options.projectId, options.from, options.to, options.filters, {
+    includeBots: options.includeBots,
+  });
   const row = getDb()
     .prepare(
       `SELECT AVG(is_bounce) AS bounce_rate, AVG(duration_seconds) AS avg_duration
@@ -135,7 +146,7 @@ function sessionMetricTotal(options: MetricOptions): number {
   return round(value ?? 0);
 }
 
-export interface BreakdownOptions extends TimeRange {
+export interface BreakdownOptions extends TimeRange, WhereOptions {
   projectId: string;
   dimension: string;
   limit: number;
@@ -147,7 +158,9 @@ export function breakdown(options: BreakdownOptions): Breakdown {
   const column = resolveDimension(options.dimension);
   if (!column) throw badRequest(`Cannot break down by "${options.dimension}"`);
 
-  const where = buildWhere(options.projectId, options.from, options.to, options.filters);
+  const where = buildWhere(options.projectId, options.from, options.to, options.filters, {
+    includeBots: options.includeBots,
+  });
 
   const rows = getDb()
     .prepare(
@@ -188,9 +201,10 @@ export function overview(
   projectId: string,
   range: TimeRange,
   filters: Record<string, string> = {},
+  options: WhereOptions = {},
 ): OverviewStats {
-  const base = { projectId, filters, ...range };
-  const totals = scalarTotals(projectId, range, filters);
+  const base = { projectId, filters, includeBots: options.includeBots, ...range };
+  const totals = scalarTotals(projectId, range, filters, options);
 
   const topRows = (dimension: string, limit = 8): BreakdownRow[] =>
     breakdown({ ...base, dimension, limit }).rows;
@@ -217,8 +231,9 @@ function scalarTotals(
   projectId: string,
   range: TimeRange,
   filters: Record<string, string>,
+  options: WhereOptions = {},
 ): { events: number; visitors: number; sessions: number } {
-  const where = buildWhere(projectId, range.from, range.to, filters);
+  const where = buildWhere(projectId, range.from, range.to, filters, options);
   return getDb()
     .prepare(
       `SELECT COUNT(*) AS events,
@@ -235,7 +250,7 @@ export function liveVisitors(projectId: string): number {
   const row = getDb()
     .prepare(
       `SELECT COUNT(DISTINCT anonymous_id) AS value
-       FROM events WHERE project_id = ? AND timestamp >= ?`,
+       FROM events WHERE project_id = ? AND timestamp >= ? AND device != 'bot'`,
     )
     .get(projectId, since) as { value: number };
   return row.value;

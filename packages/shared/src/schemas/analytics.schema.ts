@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+/** Opt back in to crawler traffic, which analytics excludes by default. */
+export const includeBotsSchema = z.coerce.boolean().default(false);
+
 export const granularitySchema = z.enum(['hour', 'day', 'week', 'month']);
 
 export const metricSchema = z.enum([
@@ -24,6 +27,7 @@ export const metricQuerySchema = timeRangeSchema.and(
   z.object({
     metric: metricSchema,
     granularity: granularitySchema.default('day'),
+    includeBots: includeBotsSchema,
     filters: z.record(z.string().max(64), z.string().max(256)).optional(),
   }),
 );
@@ -32,6 +36,7 @@ export const breakdownQuerySchema = timeRangeSchema.and(
   z.object({
     dimension: z.enum(['url', 'referrer', 'country', 'device', 'browser', 'os', 'name']),
     limit: z.coerce.number().int().min(1).max(100).default(10),
+    includeBots: includeBotsSchema,
   }),
 );
 

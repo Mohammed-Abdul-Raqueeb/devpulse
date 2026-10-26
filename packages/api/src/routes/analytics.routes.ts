@@ -12,9 +12,11 @@ import {
 import { asyncHandler } from '../lib/async-handler.js';
 import { requireAuth } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rate-limit.js';
+import { z } from 'zod';
 import { validateBody, validateQuery } from '../middleware/validate.js';
 import * as analytics from '../services/analytics.service.js';
 import * as funnels from '../services/funnel.service.js';
+import { computeRetention } from '../services/cohort.service.js';
 import { requireProject } from '../services/project.service.js';
 
 export const analyticsRoutes = Router();
@@ -34,7 +36,11 @@ analyticsRoutes.get(
     const project = requireProject(req.params.project!);
     const { from, to } = req.query as unknown as { from: string; to: string };
     const range = { from: toIso(from), to: toIso(to) };
-    res.json(analytics.overview(project.id, range, collectFilters(req.query)));
+    res.json(
+      analytics.overview(project.id, range, collectFilters(req.query), {
+        includeBots: req.query.includeBots === 'true',
+      }),
+    );
   }),
 );
 
@@ -50,6 +56,7 @@ analyticsRoutes.get(
       metric: Metric;
       granularity: Granularity;
       filters?: Record<string, string>;
+      includeBots?: boolean;
     };
 
     const range = { from: toIso(query.from), to: toIso(query.to) };
@@ -60,6 +67,7 @@ analyticsRoutes.get(
         // An explicit `granularity` wins; otherwise pick one that fits the range.
         granularity: query.granularity ?? suggestGranularity(range),
         filters: query.filters ?? collectFilters(req.query),
+        includeBots: query.includeBots ?? false,
         ...range,
       }),
     );
@@ -77,6 +85,7 @@ analyticsRoutes.get(
       to: string;
       dimension: string;
       limit: number;
+      includeBots?: boolean;
     };
     res.json(
       analytics.breakdown({
@@ -84,6 +93,7 @@ analyticsRoutes.get(
         dimension: query.dimension,
         limit: query.limit,
         filters: collectFilters(req.query),
+        includeBots: query.includeBots ?? false,
         from: toIso(query.from),
         to: toIso(query.to),
       }),
@@ -136,3 +146,40 @@ function collectFilters(query: unknown): Record<string, string> {
   }
   return filters;
 }
+
+const retentionQuerySchema = timeRangeSchema.and(
+  z.object({
+    period: z.enum(['day', 'week', 'month']).default('week'),
+    periods: z.coerce.number().int().min(1).max(24).default(8),
+  }),
+);
+
+/**
+ * GET /projects/:project/analytics/retention
+ *
+ * Cohort retention: of the visitors first seen in a period, how many returned
+ * in each following one.
+ */
+analyticsRoutes.get(
+  '/:project/analytics/retention',
+  validateQuery(retentionQuerySchema),
+  asyncHandler(async (req, res) => {
+    const project = requireProject(req.params.project!);
+    const query = req.query as unknown as {
+      from: string;
+      to: string;
+      period: 'day' | 'week' | 'month';
+      periods: number;
+    };
+
+    res.json(
+      computeRetention({
+        projectId: project.id,
+        period: query.period,
+        periods: query.periods,
+        from: toIso(query.from),
+        to: toIso(query.to),
+      }),
+    );
+  }),
+);

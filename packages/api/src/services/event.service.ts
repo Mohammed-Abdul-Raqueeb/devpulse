@@ -24,7 +24,9 @@ export interface ListEventsOptions {
 export function listEvents(options: ListEventsOptions): Paginated<StoredEvent> {
   const from = options.from ?? new Date(0).toISOString();
   const to = options.to ?? new Date(Date.now() + 60_000).toISOString();
-  const where = buildWhere(options.projectId, from, to, options.filters);
+  // The raw feed deliberately shows bots: it is the view you reach for when
+  // explaining a spike, which is exactly when crawler hits matter.
+  const where = buildWhere(options.projectId, from, to, options.filters, { includeBots: true });
 
   const conditions = [where.sql];
   const params = [...where.params];

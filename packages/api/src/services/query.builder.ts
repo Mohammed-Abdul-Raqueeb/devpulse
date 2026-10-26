@@ -28,6 +28,17 @@ const DIMENSION_COLUMNS: Record<string, FilterableColumn> = {
   userId: 'user_id',
 };
 
+export interface WhereOptions {
+  /**
+   * Include crawler traffic. Off by default.
+   *
+   * Bot hits are stored rather than discarded so a traffic spike can be
+   * explained, but counting Googlebot as a visitor makes every dashboard number
+   * wrong, so analytics excludes them unless asked.
+   */
+  includeBots?: boolean;
+}
+
 export interface WhereClause {
   sql: string;
   params: unknown[];
@@ -42,9 +53,14 @@ export function buildWhere(
   from: string,
   to: string,
   filters: Record<string, string> = {},
+  options: WhereOptions = {},
 ): WhereClause {
   const conditions = ['project_id = ?', 'timestamp >= ?', 'timestamp < ?'];
   const params: unknown[] = [projectId, from, to];
+
+  // Inlined rather than bound: the value is a literal owned by this file, and
+  // keeping it out of the parameter list leaves callers' indices unchanged.
+  if (!options.includeBots) conditions.push("device != 'bot'");
 
   for (const [key, value] of Object.entries(filters)) {
     const column = DIMENSION_COLUMNS[key];
