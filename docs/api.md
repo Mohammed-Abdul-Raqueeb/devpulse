@@ -301,3 +301,89 @@ on the status code alone.
 
 Process liveness only — never touches the database. Use this for a Kubernetes liveness probe and
 `/health` for readiness.
+
+---
+
+## Added in 1.1.0
+
+### Bot filtering
+
+Every analytics read excludes crawler traffic by default. Pass `includeBots=true` to include it:
+
+```
+GET /projects/acme/analytics/overview?from=…&to=…&includeBots=true
+```
+
+The raw event feed (`GET /projects/:project/events`) always shows everything, bots included — it is
+the view you reach for when explaining a spike.
+
+### `GET /projects/:project/analytics/retention`
+
+Cohort retention. Query: `from`, `to`, `period` (`day` | `week` | `month`, default `week`),
+`periods` (1–24, default 8).
+
+```json
+{
+  "period": "week",
+  "periods": 8,
+  "rows": [
+    {
+      "cohort": "2026-10-05T00:00:00.000Z",
+      "size": 420,
+      "retained": [420, 168, 101, 84],
+      "rates": [1, 0.4, 0.2405, 0.2]
+    }
+  ]
+}
+```
+
+A visitor belongs to the cohort of their **first ever** visit, not their first visit inside the
+range, so widening the range never moves anyone between cohorts. `retained` is shorter than
+`periods` for recent cohorts that have not had time to return — a missing entry means "not yet",
+which is a different thing from `0`.
+
+### `GET /projects/:project/events/export.ndjson`
+
+The same export as `export.csv`, in newline-delimited JSON. Query: `from`, `to`.
+
+Preferred when the destination is a pipeline rather than a spreadsheet: `properties` stays a real
+object instead of a quoted JSON string in a cell. Also safer to truncate — every complete line is
+usable even if the connection drops, which is not true of a JSON array.
+
+### Users
+
+All of these need a bearer token.
+
+| Method | Path | Role | Notes |
+| --- | --- | --- | --- |
+| `GET` | `/users` | admin | The whole team. Never includes password hashes |
+| `PATCH` | `/users/:id/role` | owner | `{ "role": "owner" \| "admin" \| "viewer" }` |
+| `DELETE` | `/users/:id` | owner | Cascades to their projects. Cannot delete yourself |
+| `POST` | `/users/me/password` | any | `{ currentPassword, newPassword }` |
+
+The last owner cannot be demoted or deleted — otherwise an install ends up with nobody able to
+administer it, and the only recovery is editing the database by hand.
+
+`POST /users/me/password` requires the current password even though the caller is already
+authenticated, which stops someone with a borrowed open session locking the real owner out. It
+returns `{ "revoked": n }`: every other session is signed out, which is the point of changing a
+password after a suspected compromise.
+
+### `GET /metrics`
+
+Prometheus text format, unauthenticated — a scraper cannot easily hold a rotating JWT.
+
+```
+# TYPE devpulse_events_ingested_total counter
+devpulse_events_ingested_total{project="acme-marketing"} 19043
+devpulse_events_rejected_total{project="acme-marketing"} 12
+devpulse_http_requests_total{method="POST",status="2xx"} 8210
+devpulse_retention_events_deleted_total 51200
+# TYPE devpulse_uptime_seconds gauge
+devpulse_uptime_seconds 8241
+devpulse_events_stored 19043
+devpulse_projects_total 3
+```
+
+It exposes counts and no event contents, but keep it off the public internet at the reverse proxy
+anyway. Values are per-process, so Prometheus is expected to aggregate across replicas.

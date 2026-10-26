@@ -28,11 +28,17 @@ wrong, you can follow it from the SQL that produced it back to the event that ca
 - **Breakdowns** — top pages, referrers (grouped by host), countries, devices, browsers and OSes.
 - **Funnels** — ordered, windowed conversion analysis. A step only counts if the visitor fired every
   earlier step *before* it, inside the conversion window.
+- **Retention** — cohort triangles by day, week or month. A visitor belongs to the cohort of their
+  first *ever* visit, so widening the range never reshuffles the cohorts.
 - **Dashboard** — a React app with a hand-rolled SVG chart, light/dark theming and keyboard
   navigation. No chart library, no CSS framework.
-- **Operations** — hashed write keys with rotation, JWT auth with rotating refresh tokens, per-project
-  rate limiting, retention sweeps, CSV streaming export and a `/health` endpoint a load balancer can
-  read.
+- **Bot handling** — crawler hits are stored but excluded from every number by default, so a spike
+  stays explainable without it corrupting your metrics.
+- **Client SDK** — a typed browser package with batching, beacon flush on unload, and retry with
+  jittered backoff. See [@devpulse/sdk](packages/sdk/README.md).
+- **Operations** — hashed write keys with rotation, JWT auth with rotating refresh tokens, role-based
+  team administration, per-project rate limiting, retention sweeps, streaming CSV and NDJSON export,
+  Prometheus metrics at `/metrics`, and a `/health` endpoint a load balancer can read.
 
 ## Quick start
 
@@ -78,18 +84,21 @@ names the offending indices so you can retry selectively.
 
 ```
 packages/
-├── shared/   Types, zod schemas and pure helpers. Imported by both sides.
+├── shared/   Types, zod schemas and pure helpers. Imported by everything.
+├── sdk/      Browser tracking client. ~2 kB gzipped, no runtime deps.
 ├── api/      Express + better-sqlite3. Ingestion, aggregation, auth, jobs.
 └── web/      React + Vite dashboard.
 docs/
 ├── api.md          Endpoint reference
 ├── architecture.md Why it is built this way
 ├── deployment.md   Running it in production
-└── tracking.md     Client integration guide
+├── metrics.md      Exactly what each number means
+├── tracking.md     Client integration guide
+└── faq.md          Common questions
 ```
 
-The dependency rule is one-directional: `shared` knows about nobody, `api` and `web` both know about
-`shared`, and they never know about each other. That is what lets a request schema be the single
+The dependency rule is one-directional: `shared` knows about nobody, and `sdk`, `api` and `web` all
+know about `shared` but never about each other. That is what lets a request schema be the single
 source of truth for both server validation and dashboard forms.
 
 ## Commands
@@ -104,13 +113,18 @@ source of truth for both server validation and dashboard forms.
 | `npm run typecheck` | `tsc --build` across the project references |
 | `npm run seed` | Generate demo data |
 | `npm run verify` | Everything CI runs, locally |
+| `npm run size` | Check the dashboard bundles against their budgets |
+| `make help` | List every shortcut |
 
 ## Documentation
 
 - [Architecture](docs/architecture.md) — the design decisions and the reasoning behind them
 - [API reference](docs/api.md) — every endpoint, with request and response shapes
+- [Metrics defined](docs/metrics.md) — exactly what each number means, and where it is biased
 - [Tracking guide](docs/tracking.md) — integrating a client
+- [SDK](packages/sdk/README.md) — the typed browser package
 - [Deployment](docs/deployment.md) — Docker, reverse proxies, backups
+- [FAQ](docs/faq.md) — the questions that come up most
 - [Contributing](CONTRIBUTING.md) — how to work on it
 
 ## License
