@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createId, parseUserAgent, type IncomingEvent } from '@devpulse/shared';
 import { setDb, type Db } from '../src/db/client.js';
+import { resetMetrics } from '../src/lib/metrics.js';
 import { resetRateLimits } from '../src/middleware/rate-limit.js';
 
 const SCHEMA_PATH = join(process.cwd(), 'packages/api/src/db/schema.sql');
@@ -21,6 +22,7 @@ export function freshDb(): Db {
   db.exec(readFileSync(SCHEMA_PATH, 'utf8'));
   setDb(db);
   resetRateLimits();
+  resetMetrics();
   return db;
 }
 
