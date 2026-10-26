@@ -133,8 +133,19 @@ describe('buildWhere', () => {
   it('always scopes to a project and a time window', () => {
     const where = buildWhere('prj_1', 'A', 'B');
 
-    expect(where.sql).toBe('project_id = ? AND timestamp >= ? AND timestamp < ?');
+    expect(where.sql).toContain('project_id = ? AND timestamp >= ? AND timestamp < ?');
     expect(where.params).toEqual(['prj_1', 'A', 'B']);
+  });
+
+  it('excludes crawler traffic by default', () => {
+    expect(buildWhere('prj_1', 'A', 'B').sql).toContain("device != 'bot'");
+  });
+
+  it('includes crawler traffic when asked, without adding a parameter', () => {
+    const where = buildWhere('prj_1', 'A', 'B', {}, { includeBots: true });
+
+    expect(where.sql).not.toContain('bot');
+    expect(where.params).toHaveLength(3);
   });
 
   it('binds filter values as parameters rather than inlining them', () => {

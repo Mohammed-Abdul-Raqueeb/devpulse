@@ -241,3 +241,60 @@ describe('liveVisitors', () => {
     expect(liveVisitors(PROJECT)).toBe(1);
   });
 });
+
+describe('bot traffic', () => {
+  const BOT_AGENT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+
+  let db: Db;
+
+  beforeEach(() => {
+    db = freshDb();
+    insertProject(db);
+    insertEvent(db, { anonymousId: 'anon_human000001', timestamp: daysAgo(1) });
+    insertEvent(db, {
+      anonymousId: 'anon_crawler0001',
+      timestamp: daysAgo(1),
+      userAgent: BOT_AGENT,
+    });
+  });
+
+  it('leaves crawlers out of the totals by default', () => {
+    const stats = overview(PROJECT, range);
+
+    expect(stats.visitors).toBe(1);
+    expect(stats.events).toBe(1);
+  });
+
+  it('counts crawlers when they are explicitly requested', () => {
+    const stats = overview(PROJECT, range, {}, { includeBots: true });
+
+    expect(stats.visitors).toBe(2);
+  });
+
+  it('leaves crawlers out of a metric series', () => {
+    const series = metricSeries({
+      projectId: PROJECT,
+      metric: 'events',
+      granularity: 'day',
+      ...range,
+    });
+
+    expect(series.total).toBe(1);
+  });
+
+  it('leaves crawlers out of a breakdown', () => {
+    const result = breakdown({ projectId: PROJECT, dimension: 'device', limit: 10, ...range });
+
+    expect(result.rows.map((r) => r.key)).not.toContain('bot');
+  });
+
+  it('leaves crawlers out of the live visitor count', () => {
+    insertEvent(db, {
+      anonymousId: 'anon_crawler0002',
+      timestamp: new Date().toISOString(),
+      userAgent: BOT_AGENT,
+    });
+
+    expect(liveVisitors(PROJECT)).toBe(0);
+  });
+});
