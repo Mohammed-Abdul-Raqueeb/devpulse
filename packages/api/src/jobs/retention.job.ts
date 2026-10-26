@@ -3,6 +3,7 @@ import { pruneExpiredEvents } from '../services/ingest.service.js';
 import { purgeExpiredTokens } from '../services/token.service.js';
 import { getDb } from '../db/client.js';
 import { logger } from '../lib/logger.js';
+import { increment, RETENTION_DELETED } from '../lib/metrics.js';
 
 export interface RetentionSummary {
   projectsScanned: number;
@@ -32,6 +33,7 @@ export function runRetention(): RetentionSummary {
   }
 
   const tokensPurged = purgeExpiredTokens();
+  increment(RETENTION_DELETED, {}, eventsDeleted);
 
   // Reclaim pages freed by the deletes so the file does not grow monotonically.
   if (eventsDeleted > 0) {

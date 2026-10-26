@@ -9,6 +9,7 @@ import {
 } from '@devpulse/shared';
 import { getDb } from '../db/client.js';
 import { logger } from '../lib/logger.js';
+import { EVENTS_INGESTED, EVENTS_REJECTED, increment } from '../lib/metrics.js';
 
 export interface IngestContext {
   project: Project;
@@ -74,6 +75,9 @@ export function ingestBatch(events: unknown[], ctx: IngestContext): IngestResult
   });
 
   if (valid.length > 0) writeAll(valid);
+
+  increment(EVENTS_INGESTED, { project: ctx.project.slug }, valid.length);
+  if (errors.length > 0) increment(EVENTS_REJECTED, { project: ctx.project.slug }, errors.length);
 
   if (errors.length > 0) {
     logger.warn(
