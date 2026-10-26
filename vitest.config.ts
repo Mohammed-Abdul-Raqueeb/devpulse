@@ -16,8 +16,12 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Only the dashboard needs a DOM; a jsdom environment for the API and SDK
+    // suites would cost seconds per run for nothing.
+    environmentMatchGlobs: [['packages/web/tests/**', 'jsdom']],
     setupFiles: ['./vitest.setup.ts'],
     include: ['packages/*/tests/**/*.test.ts', 'packages/*/tests/**/*.test.tsx'],
+    css: false,
     globals: false,
     reporters: ['default'],
     coverage: {
