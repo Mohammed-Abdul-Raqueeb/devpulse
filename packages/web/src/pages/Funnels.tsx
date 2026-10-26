@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { FunnelStepDefinition } from '@devpulse/shared';
-import { api } from '../lib/api';
+import { api, type SavedFunnel } from '../lib/api';
 import { useAsync } from '../hooks/useAsync';
 import { useDateRange } from '../hooks/useDateRange';
 import { FunnelChart } from '../components/FunnelChart';
@@ -23,7 +23,12 @@ export function Funnels(): JSX.Element {
   // Editing a step should not fire a query on every keystroke.
   const [applied, setApplied] = useState(DEFAULT_STEPS);
 
+  const [name, setName] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const names = useAsync(() => api.projects.schema(slug), [slug]);
+  const saved = useAsync(() => api.funnels.list(slug), [slug]);
   const result = useAsync(
     () => api.analytics.funnel(slug, range, applied, windowDays),
     [slug, range.from, range.to, applied, windowDays],
@@ -44,6 +49,38 @@ export function Funnels(): JSX.Element {
   const applyStructuralChange = (next: FunnelStepDefinition[]): void => {
     setSteps(next);
     setApplied(next);
+  };
+
+  const save = async (event: React.FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (!name.trim()) return;
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await api.funnels.save(slug, name.trim(), steps);
+      setName('');
+      saved.reload();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save that funnel');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Loading a saved funnel applies it straight away; there is nothing to edit yet. */
+  const load = (funnel: SavedFunnel): void => {
+    applyStructuralChange(funnel.steps);
+  };
+
+  const remove = async (id: string): Promise<void> => {
+    setSaveError(null);
+    try {
+      await api.funnels.remove(slug, id);
+      saved.reload();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not delete that funnel');
+    }
   };
 
   return (
@@ -131,6 +168,72 @@ export function Funnels(): JSX.Element {
           <ErrorNotice error={result.error} onRetry={result.reload} compact />
         ) : (
           <FunnelChart steps={result.data?.steps ?? []} loading={result.loading} />
+        )}
+      </section>
+
+      <section className="panel">
+        <header className="panel__header">
+          <h2 className="panel__title">Saved funnels</h2>
+        </header>
+        <p className="panel__hint">
+          Saving stores the steps, not the date range — a saved funnel is recalculated against
+          whatever range you are looking at.
+        </p>
+
+        <form className="inline-form" onSubmit={(e) => void save(e)}>
+          <label className="field field--grow">
+            <span className="field__label">Name</span>
+            <input
+              className="field__input"
+              placeholder="Signup flow"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              minLength={2}
+              required
+            />
+          </label>
+          <button type="submit" className="button" disabled={saving}>
+            {saving ? 'Saving…' : 'Save current steps'}
+          </button>
+        </form>
+
+        {saveError ? (
+          <p className="notice notice--error notice--compact" role="alert">
+            {saveError}
+          </p>
+        ) : null}
+
+        {(saved.data?.data.length ?? 0) === 0 ? (
+          <p className="panel__hint">Nothing saved yet.</p>
+        ) : (
+          <ul className="project-list">
+            {saved.data?.data.map((funnel) => (
+              <li key={funnel.id} className="project-list__item">
+                <div>
+                  <strong>{funnel.name}</strong>
+                  <p className="project-list__meta">
+                    {funnel.steps.map((step) => step.eventName).join(' → ')}
+                  </p>
+                </div>
+                <div className="panel__actions">
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={() => load(funnel)}
+                  >
+                    Load
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--danger"
+                    onClick={() => void remove(funnel.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>
