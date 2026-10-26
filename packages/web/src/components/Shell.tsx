@@ -7,6 +7,7 @@ const PROJECT_TABS = [
   { to: '', label: 'Overview', end: true },
   { to: 'events', label: 'Events', end: false },
   { to: 'funnels', label: 'Funnels', end: false },
+  { to: 'retention', label: 'Retention', end: false },
   { to: 'settings', label: 'Settings', end: false },
 ];
 
@@ -42,6 +43,11 @@ export function Shell({ children }: { children: ReactNode }): JSX.Element {
 
         <div className="shell__account">
           <ThemeToggle />
+          {user?.role !== 'viewer' ? (
+            <Link to="/team" className="shell__tab">
+              Team
+            </Link>
+          ) : null}
           <span className="shell__user" title={user?.email}>
             {user?.name} · {user?.role}
           </span>

@@ -108,6 +108,10 @@ export function Events(): JSX.Element {
         <a className="button button--ghost" href={api.events.exportUrl(slug, range)} download>
           Export CSV
         </a>
+
+        <a className="button button--ghost" href={api.events.exportNdjsonUrl(slug, range)} download>
+          Export NDJSON
+        </a>
       </section>
 
       <EventTable

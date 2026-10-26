@@ -964,3 +964,87 @@
     max-width: 120px;
   }
 }
+
+/* ---------- skeletons ---------- */
+
+.skeleton {
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton--block {
+  width: 100%;
+}
+
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---------- toggle ---------- */
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* ---------- retention grid ---------- */
+
+.retention {
+  font-variant-numeric: tabular-nums;
+}
+
+.retention__cohort {
+  text-align: left;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.retention__size {
+  font-weight: 650;
+}
+
+.retention__cell {
+  text-align: center;
+  /* The shade carries the signal, so the text can afford to be quiet. */
+  color: var(--text);
+  font-size: 12.5px;
+  min-width: 56px;
+}
+
+/* A period the cohort has not reached yet is blank, not zero. */
+.retention__cell--future {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    var(--surface-sunken) 4px,
+    var(--surface-sunken) 8px
+  );
+}
+
+/* ---------- misc additions ---------- */
+
+.panel--centered {
+  text-align: center;
+  align-items: center;
+}
+
+select.field__input {
+  cursor: pointer;
+  text-transform: capitalize;
+}

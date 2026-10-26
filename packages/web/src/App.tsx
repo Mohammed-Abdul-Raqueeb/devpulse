@@ -1,12 +1,16 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Shell } from './components/Shell';
 import { Events } from './pages/Events';
 import { Funnels } from './pages/Funnels';
 import { Login } from './pages/Login';
+import { NotFound } from './pages/NotFound';
 import { Overview } from './pages/Overview';
 import { Projects } from './pages/Projects';
+import { Retention } from './pages/Retention';
 import { Settings } from './pages/Settings';
+import { Team } from './pages/Team';
 
 export function App(): JSX.Element {
   return (
@@ -33,14 +37,19 @@ function Router(): JSX.Element {
 
   return (
     <Shell>
-      <Routes>
-        <Route path="/" element={<Projects />} />
-        <Route path="/p/:slug" element={<Overview />} />
-        <Route path="/p/:slug/events" element={<Events />} />
-        <Route path="/p/:slug/funnels" element={<Funnels />} />
-        <Route path="/p/:slug/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      {/* Scoped to the routed screen, so a broken page keeps the shell usable. */}
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Projects />} />
+          <Route path="/p/:slug" element={<Overview />} />
+          <Route path="/p/:slug/events" element={<Events />} />
+          <Route path="/p/:slug/funnels" element={<Funnels />} />
+          <Route path="/p/:slug/retention" element={<Retention />} />
+          <Route path="/p/:slug/settings" element={<Settings />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ErrorBoundary>
     </Shell>
   );
 }
