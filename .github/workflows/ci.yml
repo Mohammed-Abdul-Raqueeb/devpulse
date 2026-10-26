@@ -70,6 +70,9 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      - name: Check bundle budgets
+        run: npm run size
+
       - name: Upload dashboard build
         uses: actions/upload-artifact@v7
         with:
