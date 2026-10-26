@@ -7,6 +7,7 @@ import { MAX_INGEST_BYTES } from '@devpulse/shared';
 import { corsOrigins, env, isTest } from './config.js';
 import { logger } from './lib/logger.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { httpMetrics } from './middleware/metrics.js';
 import { requestId } from './middleware/request-id.js';
 import { analyticsRoutes } from './routes/analytics.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
@@ -14,7 +15,9 @@ import { eventRoutes } from './routes/event.routes.js';
 import { funnelRoutes } from './routes/funnel.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { ingestRoutes } from './routes/ingest.routes.js';
+import { metricsRoutes } from './routes/metrics.routes.js';
 import { projectRoutes } from './routes/project.routes.js';
+import { userRoutes } from './routes/user.routes.js';
 import { version } from './lib/version.js';
 
 /**
@@ -29,6 +32,7 @@ export function createApp(): Express {
   app.disable('x-powered-by');
 
   app.use(requestId);
+  app.use(httpMetrics);
   if (!isTest) {
     app.use(
       pinoHttp({
@@ -37,7 +41,10 @@ export function createApp(): Express {
         // HTTP log line and any error body refer to the same request.
         genReqId: (req): string => (req as { requestId?: string }).requestId ?? 'unknown',
         // Health checks would otherwise be most of the log volume.
-        autoLogging: { ignore: (req): boolean => req.url?.startsWith('/health') ?? false },
+        autoLogging: {
+          ignore: (req): boolean =>
+            (req.url?.startsWith('/health') || req.url?.startsWith('/metrics')) ?? false,
+        },
       }),
     );
   }
@@ -60,7 +67,9 @@ export function createApp(): Express {
   const dashboardCors = cors({ origin: corsOrigins, credentials: true });
 
   app.use('/health', healthRoutes);
+  app.use('/metrics', metricsRoutes);
   app.use('/auth', dashboardCors, authRoutes);
+  app.use('/users', dashboardCors, userRoutes);
   app.use('/projects', dashboardCors, projectRoutes);
   app.use('/projects', dashboardCors, analyticsRoutes);
   app.use('/projects', dashboardCors, eventRoutes);
