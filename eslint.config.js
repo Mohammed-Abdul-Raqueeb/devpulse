@@ -50,6 +50,19 @@ export default [
     rules: { ...tsPlugin.configs.recommended.rules, ...sharedRules },
   },
 
+  // SDK: ships to the browser, so it gets browser globals and no node ones.
+  {
+    files: ['packages/sdk/**/*.ts'],
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser },
+    },
+    plugins: { '@typescript-eslint': tsPlugin },
+    rules: { ...tsPlugin.configs.recommended.rules, ...sharedRules },
+  },
+
   // API: Node.
   {
     files: ['packages/api/**/*.ts'],

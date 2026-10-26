@@ -14,11 +14,12 @@
   },
   "workspaces": [
     "packages/shared",
+    "packages/sdk",
     "packages/api",
     "packages/web"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@devpulse/shared && npm run build --workspace=@devpulse/api && npm run build --workspace=@devpulse/web",
+    "build": "npm run build --workspace=@devpulse/shared && npm run build --workspace=@devpulse/sdk && npm run build --workspace=@devpulse/api && npm run build --workspace=@devpulse/web",
     "dev": "npm run dev --workspace=@devpulse/api & npm run dev --workspace=@devpulse/web",
     "dev:api": "npm run dev --workspace=@devpulse/api",
     "dev:web": "npm run dev --workspace=@devpulse/web",
