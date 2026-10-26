@@ -8,10 +8,34 @@ import type {
   OverviewStats,
   Paginated,
   Project,
+  Role,
   StoredEvent,
   TimeRange,
   User,
 } from '@devpulse/shared';
+
+/** A funnel definition stored server-side, as the API returns it. */
+export interface SavedFunnel {
+  id: string;
+  projectId: string;
+  name: string;
+  steps: FunnelStepDefinition[];
+  createdAt: string;
+}
+
+export interface CohortRow {
+  cohort: string;
+  size: number;
+  /** Returning visitors per period, index 0 being the cohort's own period. */
+  retained: number[];
+  rates: number[];
+}
+
+export interface CohortReport {
+  period: 'day' | 'week' | 'month';
+  periods: number;
+  rows: CohortRow[];
+}
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
 const TOKEN_KEY = 'devpulse.tokens';
@@ -150,13 +174,59 @@ export const api = {
       request<{ eventNames: string[]; propertyKeys: string[] }>(`/projects/${id}/schema`),
   },
 
-  analytics: {
-    overview: (project: string, range: TimeRange) =>
-      request<OverviewStats>(`/projects/${project}/analytics/overview`, { query: { ...range } }),
+  users: {
+    list: () => request<{ data: User[] }>('/users'),
 
-    series: (project: string, range: TimeRange, metric: string, granularity: string) =>
+    updateRole: (id: string, role: Role) =>
+      request<{ user: User }>(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
+
+    remove: (id: string) => request<void>(`/users/${id}`, { method: 'DELETE' }),
+
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request<{ revoked: number }>('/users/me/password', {
+        method: 'POST',
+        body: { currentPassword, newPassword },
+      }),
+  },
+
+  funnels: {
+    list: (project: string) => request<{ data: SavedFunnel[] }>(`/projects/${project}/funnels`),
+
+    save: (project: string, name: string, steps: FunnelStepDefinition[]) =>
+      request<{ funnel: SavedFunnel }>(`/projects/${project}/funnels`, {
+        method: 'POST',
+        body: { name, steps },
+      }),
+
+    remove: (project: string, id: string) =>
+      request<void>(`/projects/${project}/funnels/${id}`, { method: 'DELETE' }),
+  },
+
+  analytics: {
+    overview: (project: string, range: TimeRange, includeBots = false) =>
+      request<OverviewStats>(`/projects/${project}/analytics/overview`, {
+        query: { ...range, ...(includeBots ? { includeBots: 'true' } : {}) },
+      }),
+
+    series: (
+      project: string,
+      range: TimeRange,
+      metric: string,
+      granularity: string,
+      includeBots = false,
+    ) =>
       request<MetricSeries>(`/projects/${project}/analytics/series`, {
-        query: { ...range, metric, granularity },
+        query: { ...range, metric, granularity, ...(includeBots ? { includeBots: 'true' } : {}) },
+      }),
+
+    retention: (
+      project: string,
+      range: TimeRange,
+      period: CohortReport['period'] = 'week',
+      periods = 8,
+    ) =>
+      request<CohortReport>(`/projects/${project}/analytics/retention`, {
+        query: { ...range, period, periods },
       }),
 
     breakdown: (project: string, range: TimeRange, dimension: string, limit = 10) =>
@@ -179,5 +249,9 @@ export const api = {
 
     exportUrl: (project: string, range: TimeRange) =>
       `${BASE_URL}/projects/${project}/events/export.csv?from=${range.from}&to=${range.to}`,
+
+    /** NDJSON instead of CSV, for a pipeline rather than a spreadsheet. */
+    exportNdjsonUrl: (project: string, range: TimeRange) =>
+      `${BASE_URL}/projects/${project}/events/export.ndjson?from=${range.from}&to=${range.to}`,
   },
 };
