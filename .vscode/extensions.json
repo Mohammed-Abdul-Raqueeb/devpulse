@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "vitest.explorer",
+    "qwtel.sqlite-viewer",
+    "ms-azuretools.vscode-docker"
+  ]
+}
