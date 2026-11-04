@@ -1,5 +1,7 @@
 # DevPulse
 
+> 📘 **Case study:** [raqueeb.dev/projects/devpulse](https://raqueeb.dev/projects/devpulse) — architecture, stack and implementation notes.
+
 Self-hosted product analytics you can actually read the source of. An event ingestion API, an
 aggregation engine over SQLite, and a dashboard — one repository, one `npm install`, no external
 services.
